@@ -1,20 +1,29 @@
 
+# Resampling in radiomics
+
 This repository contains the code for the paper
-'The effect of data resampling methods in radiomics'
-https://...
+'The effect of data resampling methods in radiomics'.
 
-The results are in ./results, the figures for the paper are in ./paper.
+The repository consists of Python code (in ./), data (in ./data), results (in ./results) and data for the paper (./data).
 
-To re-generate the results:
-- python3 ./experiment.py
+To restart the whole experiment and re-generate the results:
 
-Modify ./parameters.py to your needs. It will take around 5-6 days on a
-32-core CPU.
+```python3 ./experiment.py```
 
-To re-evaluate:
-- python3 ./evaluate.py
+To ensure that all libraries are available, install the requirements.txt by
+```pip3 install -r requirements.txt```.
 
-Note that you can reevaluate without generating, since the results are
+Modify ```./parameters.py``` to your needs, e.g. change number of cpus or
+number of repeats. The current configuration will take around 5-6 days on a
+32-core CPU (AMD Threadripper 2950X).
+
+After all experiments finished, or if you just want to re-evaluate the
+provided results, execute:
+
+```python3 ./evaluate.py```
+
+Note that re-evaluation is possible without running the experiments, since
+all the results are
 store within this repository.
 
 
