@@ -1,0 +1,20 @@
+Resampling,Mean rank,Mean gain in AUC,Maximum gain in AUC
+None,6.1,0.0,0.0
+SMOTE [k=7],6.3,-0.001,0.009
+SMOTE [k=3],6.8,-0.001,0.015
+SMOTE [k=5],7.2,-0.003,0.006
+Random Oversampling,7.5,-0.001,0.01
+SVM-SMOTE [k=3],8.3,-0.004,0.004
+SVM-SMOTE [k=7],8.5,-0.003,0.004
+SMOTE+Tomek links [k=5],9.1,-0.006,0.004
+SMOTE+Tomek links [k=3],9.6,-0.005,0.015
+SVM-SMOTE [k=5],9.9,-0.004,0.002
+SMOTE+Tomek links [k=7],9.9,-0.005,0.006
+Tomek links,10.3,-0.008,0.005
+Random Undersampling,10.4,-0.007,0.002
+"SMOTE+Edited NN [k=3, n=3]",12.3,-0.015,0.007
+All k-NN [k=3],12.8,-0.025,0.013
+All k-NN [k=7],13.6,-0.025,0.013
+All k-NN [k=5],13.6,-0.025,0.013
+"SMOTE+Edited NN [k=5, n=3]",13.7,-0.019,0.007
+Edited NN [k=3],14.2,-0.027,0.005

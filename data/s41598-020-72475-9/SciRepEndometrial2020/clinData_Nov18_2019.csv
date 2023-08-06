@@ -1,0 +1,158 @@
+MRN,Histology,FIGO,Stage,MolecularSubtype,CT_Make,Age,Exclude,TMB
+PT_1,Endometrioid type ,Well-differentiated,Uterus-confined,2,Siemens,72,No,21.1
+PT_2,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,61,No,3.9
+PT_3,High-grade type,Poorly-differentiated,Uterus-confined,4,GE,71,No,5.3
+PT_4,High-grade type,Poorly-differentiated,Extra-uterine ,4,GE,56,No,3.9
+PT_5,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,64,No,8.8
+PT_6,Endometrioid type ,Well-differentiated,Extra-uterine ,3,GE,60,No,5.3
+PT_7,Endometrioid type ,Well-differentiated,Uterus-confined,1,GE,50,No,79
+PT_8,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,62,No,8.8
+PT_9,Endometrioid type ,Poorly-differentiated,Uterus-confined,2,GE,93,No,32.5
+PT_10,Endometrioid type ,Poorly-differentiated,Uterus-confined,1,Siemens,43,No,80.7
+PT_11,Carcinosarcoma ,Poorly-differentiated,Uterus-confined,4,GE,64,No,4.9
+PT_12,High-grade type,Poorly-differentiated,Extra-uterine ,4,Toshiba,72,No,4.9
+PT_14,Endometrioid type ,Poorly-differentiated,Extra-uterine ,4,Siemens,49,No,3.9
+PT_15,Serous type,Poorly-differentiated,Extra-uterine ,4,Siemens,91,No,4.4
+PT_16,Clear-cell type ,Poorly-differentiated,Uterus-confined,4,GE,73,No,5.3
+PT_17,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,Siemens,54,Yes,-1
+PT_18,Serous type,Poorly-differentiated,Uterus-confined,4,GE,61,No,3.5
+PT_19,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,73,No,12.8
+PT_20,Serous type,Poorly-differentiated,Uterus-confined,4,GE,74,No,3.5
+PT_21,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,68,No,6.9
+PT_22,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,69,No,1.8
+PT_23,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,57,No,4.4
+PT_24,Serous type,Poorly-differentiated,Uterus-confined,4,GE,65,No,2.6
+PT_25,Carcinosarcoma ,Poorly-differentiated,Uterus-confined,4,GE,71,No,2.6
+PT_26,Endometrioid type ,Poorly-differentiated,Extra-uterine ,4,GE,47,No,3
+PT_27,Clear-cell type ,Poorly-differentiated,Extra-uterine ,4,GE,56,No,6.7
+PT_28,Endometrioid type ,Well-differentiated,Uterus-confined,2,GE,76,No,29.8
+PT_29,Endometrioid type ,Poorly-differentiated,Uterus-confined,3,GE,58,No,3
+PT_32,Endometrioid type ,Well-differentiated,Extra-uterine ,3,Siemens,65,No,2
+PT_33,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,Siemens,71,No,4.9
+PT_34,Serous type,Poorly-differentiated,Uterus-confined,4,Toshiba,70,No,3
+PT_35,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,3,GE,67,No,6.9
+PT_36,Clear-cell type ,Poorly-differentiated,Uterus-confined,3,GE,59,No,5.3
+PT_37,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,Siemens,70,No,1.8
+PT_38,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,Siemens,54,Yes,-1
+PT_39,Serous type,Poorly-differentiated,Extra-uterine ,4,Siemens,64,Yes,-1
+PT_40,Endometrioid type ,Poorly-differentiated,Extra-uterine ,4,GE,65,No,2.6
+PT_41,Endometrioid type ,Well-differentiated,Extra-uterine ,3,GE,73,No,5.9
+PT_42,Serous type,Poorly-differentiated,Uterus-confined,4,GE,74,No,3.9
+PT_43,Endometrioid type ,Poorly-differentiated,Extra-uterine ,4,GE,54,No,2.2
+PT_44,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,61,Yes,-1
+PT_45,Carcinosarcoma ,Poorly-differentiated,Uterus-confined,4,GE,65,No,6.9
+PT_46,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,61,No,3
+PT_47,Carcinosarcoma ,Poorly-differentiated,Uterus-confined,4,GE,60,No,3
+PT_48,Endometrioid type ,Well-differentiated,Extra-uterine ,2,GE,81,No,37.7
+PT_49,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,71,No,2.6
+PT_50,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,72,No,3
+PT_51,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,61,No,6.7
+PT_52,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,62,No,4.5
+PT_53,Clear-cell type ,Poorly-differentiated,Extra-uterine ,4,GE,72,No,4.5
+PT_54,Serous type,Poorly-differentiated,Extra-uterine ,4,Siemens,71,No,1.8
+PT_55,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,77,No,3.9
+PT_57,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,70,No,3.9
+PT_58,Carcinosarcoma ,Poorly-differentiated,Uterus-confined,3,Siemens,59,No,2.6
+PT_59,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,68,No,1.8
+PT_60,High-grade type,Poorly-differentiated,Uterus-confined,3,GE,72,No,1.8
+PT_61,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,Siemens,57,No,6.9
+PT_63,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,55,No,4.4
+PT_64,High-grade type,Poorly-differentiated,Extra-uterine ,3,GE,61,No,8.9
+PT_66,Serous type,Poorly-differentiated,Extra-uterine ,4,Siemens,62,No,8.8
+PT_67,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,72,No,6.1
+PT_68,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,60,No,7.9
+PT_69,High-grade type,Poorly-differentiated,Uterus-confined,4,Toshiba,55,No,1.8
+PT_70,Endometrioid type ,Well-differentiated,Uterus-confined,1,Siemens,63,No,203.6
+PT_71,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,72,No,5.9
+PT_72,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,71,No,7
+PT_73,Endometrioid type ,Poorly-differentiated,Extra-uterine ,3,GE,35,No,8.9
+PT_74,Endometrioid type ,Poorly-differentiated,Extra-uterine ,2,GE,62,No,28.5
+PT_75,Clear-cell type ,Poorly-differentiated,Extra-uterine ,4,GE,79,No,10.5
+PT_76,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,69,No,11.8
+PT_77,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,75,No,3.5
+PT_78,High-grade type,Poorly-differentiated,Extra-uterine ,2,GE,84,No,56.1
+PT_79,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,72,No,3.9
+PT_80,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,60,No,3.5
+PT_81,Endometrioid type ,Poorly-differentiated,Uterus-confined,2,GE,65,No,12.8
+PT_82,Endometrioid type ,Poorly-differentiated,Uterus-confined,1,GE,64,No,242
+PT_83,Endometrioid type ,Well-differentiated,Uterus-confined,2,Siemens,65,No,3
+PT_84,Endometrioid type ,Well-differentiated,Uterus-confined,1,Siemens,53,No,220.4
+PT_86,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,79,No,4.9
+PT_87,Endometrioid type ,Well-differentiated,Uterus-confined,2,GE,63,No,11.8
+PT_88,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,Siemens,69,No,2
+PT_90,Endometrioid type ,Well-differentiated,Extra-uterine ,2,Siemens,31,No,18.7
+PT_91,Endometrioid type ,Well-differentiated,Extra-uterine ,2,GE,44,No,27.2
+PT_92,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,76,No,7
+PT_93,Endometrioid type ,Well-differentiated,Uterus-confined,2,GE,55,No,44.8
+PT_94,Endometrioid type ,Well-differentiated,Uterus-confined,2,GE,57,No,15.8
+PT_96,Un-differentiated/de-differentiated type,Poorly-differentiated,Extra-uterine ,3,GE,78,No,11.4
+PT_97,Endometrioid type ,Well-differentiated,Uterus-confined,4,GE,52,No,7.9
+PT_98,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,56,No,3.5
+PT_99,High-grade type,Poorly-differentiated,Extra-uterine ,3,Philips,56,No,1.8
+PT_100,Endometrioid type ,Well-differentiated,Uterus-confined,1,GE,54,No,98.3
+PT_102,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,62,No,9.7
+PT_103,Carcinosarcoma ,Poorly-differentiated,Uterus-confined,4,GE,64,No,4.4
+PT_104,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,71,No,2.6
+PT_105,Endometrioid type ,Well-differentiated,Uterus-confined,2,GE,64,No,15.8
+PT_106,Endometrioid type ,Poorly-differentiated,Extra-uterine ,2,Philips,64,No,37.7
+PT_107,High-grade type,Poorly-differentiated,Extra-uterine ,3,GE,76,No,9.7
+PT_108,High-grade type,Poorly-differentiated,Extra-uterine ,2,GE,53,No,32.5
+PT_109,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,65,No,1.8
+PT_110,Endometrioid type ,Well-differentiated,Extra-uterine ,2,GE,70,No,23.7
+PT_111,Endometrioid type ,Well-differentiated,Uterus-confined,3,Siemens,49,Yes,-1
+PT_112,High-grade type,Poorly-differentiated,Extra-uterine ,4,Siemens,62,No,5.3
+PT_113,High-grade type,Poorly-differentiated,Uterus-confined,2,GE,60,No,57.9
+PT_114,Clear-cell type ,Poorly-differentiated,Extra-uterine ,4,GE,70,No,3.5
+PT_115,Serous type,Poorly-differentiated,Uterus-confined,4,GE,84,No,5.3
+PT_116,Un-differentiated/de-differentiated type,Poorly-differentiated,Extra-uterine ,2,Siemens,76,No,44.8
+PT_117,Endometrioid type ,Well-differentiated,Extra-uterine ,2,GE,77,No,20.2
+PT_118,Endometrioid type ,Poorly-differentiated,Extra-uterine ,2,Siemens,45,No,40.4
+PT_119,Serous type,Poorly-differentiated,Uterus-confined,4,GE,65,No,3.5
+PT_120,Clear-cell type ,Poorly-differentiated,Uterus-confined,4,GE,73,No,4.4
+PT_121,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,61,No,1.8
+PT_122,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,2,Siemens,52,No,59.7
+PT_123,Endometrioid type ,Poorly-differentiated,Uterus-confined,2,GE,70,No,303.7
+PT_124,Clear-cell type ,Poorly-differentiated,Uterus-confined,4,GE,68,No,3.9
+PT_125,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,60,No,2.6
+PT_126,High-grade type,Poorly-differentiated,Uterus-confined,2,GE,61,No,42.1
+PT_127,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,49,No,7.9
+PT_128,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,66,No,7
+PT_129,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,61,No,4.4
+PT_130,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,63,No,3.5
+PT_131,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,73,Yes,-1
+PT_132,Endometrioid type ,Well-differentiated,Extra-uterine ,2,Siemens,61,No,22.8
+PT_133,Endometrioid type ,Well-differentiated,Extra-uterine ,3,GE,62,No,5.3
+PT_134,Serous type,Poorly-differentiated,Uterus-confined,4,GE,69,No,3.5
+PT_135,Un-differentiated/de-differentiated type,Poorly-differentiated,Uterus-confined,2,Siemens,67,No,36.9
+PT_136,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,70,No,5.3
+PT_137,Carcinosarcoma ,Poorly-differentiated,Extra-uterine ,4,GE,71,No,5.3
+PT_138,Serous type,Poorly-differentiated,Extra-uterine ,4,GE,80,No,4.4
+PT_140,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,38,No,4.4
+PT_141,Un-differentiated/de-differentiated type,Poorly-differentiated,Uterus-confined,2,GE,66,No,17.6
+PT_142,Endometrioid type ,Poorly-differentiated,Extra-uterine ,4,GE,58,No,6.1
+PT_143,Endometrioid type ,Well-differentiated,Extra-uterine ,2,GE,41,No,15.8
+PT_144,Endometrioid type ,Well-differentiated,Uterus-confined,3,Siemens,63,No,7
+PT_146,Serous type,Poorly-differentiated,Uterus-confined,4,GE,74,No,4.4
+PT_147,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,58,No,7
+PT_148,Serous type,Poorly-differentiated,Uterus-confined,4,Siemens,61,No,7.9
+PT_149,Un-differentiated/de-differentiated type,Poorly-differentiated,Uterus-confined,2,Siemens,57,No,52.7
+PT_150,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,57,Yes,-1
+PT_151,Endometrioid type ,Well-differentiated,Uterus-confined,3,GE,59,No,0.9
+PT_152,Carcinosarcoma ,Poorly-differentiated,Uterus-confined,4,GE,66,No,3.5
+PT_153,Clear-cell type ,Poorly-differentiated,Extra-uterine ,2,Siemens,48,No,24.6
+PT_155,High-grade type,Poorly-differentiated,Extra-uterine ,3,GE,67,No,7
+PT_156,Carcinosarcoma ,Poorly-differentiated,Uterus-confined,4,Siemens,72,No,2.6
+PT_157,Un-differentiated/de-differentiated type,Poorly-differentiated,Extra-uterine ,2,GE,56,No,31.6
+PT_13,Endometrioid type ,Poorly-differentiated,Uterus-confined,2,GE,61,No,26.6
+PT_30,Endometrioid type ,Poorly-differentiated,Uterus-confined,2,GE,58,No,27.5
+PT_31,Endometrioid type ,Poorly-differentiated,Extra-uterine ,2,Toshiba,80,No,25.7
+PT_56,Endometrioid type ,Poorly-differentiated,Extra-uterine ,2,GE,53,No,50.9
+PT_62,Clear-cell type ,Poorly-differentiated,Uterus-confined,2,GE,53,No,50.2
+PT_65,Endometrioid type ,Well-differentiated,Extra-uterine ,2,Siemens,60,No,58
+PT_85,Endometrioid type ,Well-differentiated,Extra-uterine ,2,GE,70,No,30.7
+PT_89,Endometrioid type ,Poorly-differentiated,Extra-uterine ,2,GE,68,No,58.8
+PT_95,Endometrioid type ,Poorly-differentiated,Extra-uterine ,2,GE,54,No,51.8
+PT_101,Clear-cell type ,Poorly-differentiated,Extra-uterine ,2,GE,42,No,73.7
+PT_139,Endometrioid type ,Well-differentiated,Uterus-confined,2,GE,67,No,32.5
+PT_145,Endometrioid type ,Well-differentiated,Extra-uterine ,2,GE,52,No,55.3
+PT_154,Endometrioid type ,Well-differentiated,Uterus-confined,2,Philips,57,No,37.7

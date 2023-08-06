@@ -1,0 +1,574 @@
+---
+title: "Untitled"
+author: "Harini Veeraraghavan"
+date: "December 11, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo=FALSE}
+
+  require(tidyverse)
+  require(knitr)
+  require(broom)
+  require(FSA)
+  require(lattice)
+  require(multcompView)
+  require(survival)
+  require(survminer)
+  require(randomForest)
+  require(pROC)
+  require(ROCR)
+  require(caret)
+
+  require(dplyr)
+
+
+  options(scipen=1, digits=2)
+  
+  # Variants of mean, median etc with na.rm = T
+  min_    <- function(...) min(..., na.rm=T)
+  max_    <- function(...) max(..., na.rm=T)
+  mean_   <- function(...) mean(..., na.rm=T)
+  median_ <- function(...) median(..., na.rm=T)
+  Q1_     <- function(...) quantile(..., probs=0.25, na.rm = TRUE)
+  Q3_     <- function(...) quantile(..., probs=0.75, na.rm = TRUE)
+  sum_    <- function(...) sum(..., na.rm=T)
+
+    # function to return counts of samples
+  n_fun <- function(x, y){ # y is position for labels
+    return(data.frame(y, label = paste0("n = ", length(x))))
+  }
+  
+  empty_as_na <- function(x){
+    if("factor" %in% class(x)) x <- as.character(x) ## since ifelse wont work with factors
+    ifelse(as.character(x)!="", x, NA)
+  }
+  
+  smotetest300 <- list(name = "customSMOTE", func = function(x,y) {
+    set.seed(1000)
+    library(DMwR)
+    dat <- if(is.data.frame(x)) x else as.data.frame(x)
+    dat$.y <- y
+    dat <- SMOTE(.y ~ ., data = dat, perc.under = 100, perc.over = 300, k = 5)
+    list(x = dat[, !grepl(".y", colnames(dat), fixed = TRUE)],
+         y = dat$.y)
+  },
+  first = TRUE)
+```
+
+Load in the clinical data and the features
+
+```{r, echo=FALSE, warning=FALSE}
+  #feat.data <- read.csv("CERRFeatures_Nov18_2019_Res_InnerOuter_wOutcomes-onlyMSK.csv")
+  clin.data <- read.csv("clinData_Nov18_2019.csv")
+  feat.data <- read.csv("CERRFeatures_FINAL.csv")
+```
+
+Merge the data from the two to combine clinical data with the features
+
+
+```{r, echo=FALSE, warning=FALSE}
+  clin.names <- colnames(clin.data)
+  
+  onlyFeature.data <- feat.data
+  for (i in 1 : nrow(clin.data)) {
+    idx <- feat.data$PID == clin.data$MRN[i]
+    if(sum(as.numeric(idx)) !=0) {
+      feat.data[idx,colnames(feat.data)%in%clin.names[2:length(clin.names)]] <- clin.data[i,2:length(clin.names)]
+    }
+  }
+  
+  indx <- complete.cases(feat.data$FIGO)
+  feat.data <- feat.data[indx,]
+  indx <- feat.data$TMB > -1
+  feat.data <- feat.data[indx,]
+  
+  fnames <- colnames(feat.data)
+  fnames <- fnames[2:length(fnames)]
+
+```
+
+#Molecular subtype groups 1 + 2 (ultra/hypermutated tumors) to groups 3 + 4 (non-hypermutated tumors)
+```{r, echo=FALSE, warning=FALSE}
+  
+ # Basic data exploration
+  print(sum(as.numeric(feat.data$MolecularSubtype <3), na.rm=T)) ## (non-hypermutated tumors)  - Low TMB (CN-low + CN-high)
+  print(sum(as.numeric(feat.data$MolecularSubtype >2), na.rm=T)) ## High TMB (POLE + MMR-D) (ultra/hypermutated tumors)
+  
+  print(sum(as.numeric(feat.data$MolecularSubtype ==3), na.rm=T)) ## CN-Low
+  print(sum(as.numeric(feat.data$MolecularSubtype >3), na.rm=T)) ## CN-High
+  
+  print(sum(as.numeric(feat.data$MolecularSubtype ==1), na.rm=T)) ## (Ultra-mutated POLE-E tumors)
+  print(sum(as.numeric(feat.data$MolecularSubtype ==2), na.rm=T)) ## (MSI hypermutated tumors)
+
+  print(sum(as.numeric(feat.data$CT_Make=="GE"),na.rm=T)) #GE
+  print(sum(as.numeric(feat.data$CT_Make=="Philips"),na.rm=T)) #Philips
+  print(sum(as.numeric(feat.data$CT_Make=="Siemens"),na.rm=T)) #Seimens
+  print(sum(as.numeric(feat.data$CT_Make=="Toshiba"),na.rm=T)) #Toshiba
+  
+  print(sum(as.numeric(feat.data$FIGO=="Poorly-differentiated"),na.rm=T)) #Poorly differentiated
+  print(sum(as.numeric(feat.data$FIGO=="Well-differentiated"),na.rm=T)) #Poorly di  
+  print(sum(as.numeric(feat.data$Stage=="Extra-uterine "),na.rm=T)) #Extra-uterine
+  print(sum(as.numeric(feat.data$Stage=="Uterus-confined"),na.rm = T)) #Uterus-confined
+  
+  print(sum(as.numeric(feat.data$Histology=="Carcinosarcoma "),na.rm=T)) #Carcinosarcoma
+  print(sum(as.numeric(feat.data$Histology=="Clear-cell type "),na.rm = T)) #Clear-cell
+  print(sum(as.numeric(feat.data$Histology=="Endometrioid type "),na.rm=T)) #Endometrioid
+  print(sum(as.numeric(feat.data$Histology=="High-grade type"),na.rm = T)) #High-grade
+  print(sum(as.numeric(feat.data$Histology=="Serous type"),na.rm=T)) #Serous
+  print(sum(as.numeric(feat.data$Histology=="Un-differentiated/de-differentiated type"),na.rm = T)) #Undifferentiated/de-differentiated
+  
+
+```
+
+Partition into training and testing
+```{r, echo=FALSE}
+    set.seed(1000)   
+    ntrain <- round(nrow(feat.data) * 0.70)
+    train <- sample(1:nrow(feat.data), ntrain, replace = FALSE)
+    test <- (1:nrow(feat.data))[-train]
+    
+   train_set_All <- feat.data[train,]
+   test_set_All <- feat.data[test,]
+   
+     ### difference in histology between training and testing set 
+  tidy(fisher.test(t(matrix(c(c(45, 17, 22, 9, 8, 3), c(15, 11, 2, 4, 13, 1)), nrow=2, ncol=6, dimnames = list(c("Train", "Test"), c("Endometroid", "Clear cell", "Carcinosarcoma", "Unclassified", "Serous", "Undifferentiated")))), alternative="two.sided", hybrid=TRUE, workspace = 2e+07))
+  
+  ##difference in the molecular subtype between training and testing set
+  tidy(fisher.test(t(matrix(c(c(3, 3, 33, 11), c(20, 8, 49, 23)), nrow=2, ncol=4, dimnames = list(c("Train", "Test"), c("POLE", "MMR-D", "CN-low", "CN-high")))), alternative="two.sided", hybrid=TRUE, workspace=2e+07))
+
+```
+
+Check if the features are impacted by differences in scan manufacturers
+```{r, echo=FALSE, warning=FALSE}
+   featNames <- fnames[!(fnames %in%clin.names)]
+   Pvals <- rep(0, length(featNames))
+   for (i in 1 : length(featNames)) {
+     ktest <- kruskal.test(train_set_All[,names(train_set_All)%in%featNames[i]] ~ train_set_All$CT_Make)
+     
+      Pvals[i] <- ktest$p.value
+      if(!is.finite(Pvals[i])){
+        Pvals[i] =0.0
+      }
+   }
+   indxRobust <- Pvals > 0.05
+   #indxRobust <- p.adjust(Pvals, method="BH") > 0.05
+   fnames <- featNames[indxRobust]
+   write.csv(fnames, file = "RobustFeatures-NotResampled.csv")
+```
+
+## Tabulate features that are robust by category
+```{r, echo=FALSE, warning=FALSE}
+
+ robustFeaturesByCat <- read.csv("RobustFeatures-Summary.csv")
+ aggCounts <- aggregate(x=robustFeaturesByCat$Feature, by=list(robustFeaturesByCat$Type, robustFeaturesByCat$Processing), FUN=length)
+ print(aggCounts)
+ colnames(aggCounts) <- c("FeatureType", "Processing", "Number")
+ 
+ require(ggplot2)
+ require(ggpubr)
+ gs <- ggplot(data=aggCounts, aes(x=FeatureType, y = Number, fill=Processing)) + geom_bar(stat="identity", position = position_dodge()) + theme_pubr(base_size = 24) + theme(axis.text=element_text(size=20), axis.title = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_text(size=24), legend.text = element_text(size=20)) + theme(legend.background = element_rect(fill="white", size=0.5, linetype="solid", color="black"))
+ 
+ ggsave("RobustFeaturesSummary.pdf", gs, dpi=300)
+```
+
+
+** TMB high > 15.5 vs. low  **
+
+```{r, echo=FALSE}
+  require(mRMRe)
+  require(caret)
+  #x <- x[2:length(x)]
+  Response <- train_set_All$TMB > 15.5
+  Response <- replace(Response, Response==TRUE, "TMB.Hi") #LOW TMB
+  Response <- replace(Response, Response==FALSE, "TMB.Low") # High TMB
+  Response <- as.factor(Response)
+  train_set_All$Response = Response
+ 
+   x <- fnames[!(fnames%in% clin.names)]
+  
+  featuredata <- train_set_All[, c("Response", x)]
+  fclass <- sapply(featuredata, class)
+  nonNum <- fclass != "numeric"
+  featuredata[,nonNum] <- as.numeric(featuredata[,nonNum])
+  
+  nfeats <- ncol(featuredata)
+  fdata <- mRMR.data(data = data.frame(featuredata))
+  filter <- mRMR.classic("mRMRe.Filter", data = fdata, target_indices = 1, feature_count = round((length(featuredata)-1)*0.8))
+  
+  
+  
+  findx <- unlist(solutions(filter), use.names=FALSE)
+  findx <- findx-1
+  
+  train_set <- train_set_All[, names(train_set_All) %in% c(x[findx], "Histology", "FIGO", "Stage", "Age")]
+  test_set <- test_set_All[, names(test_set_All) %in% c(x[findx], "Histology", "FIGO", "Stage", "Age")]
+  
+  objControl <- trainControl(method="repeatedcv", number = 5, repeats = 10, search = "grid", classProb = TRUE, savePredictions = "final", summaryFunction = twoClassSummary, sampling = "up", verbose = TRUE)
+    eGrid <- expand.grid(.alpha = seq(0.1,1.0,by=0.1), .lambda = seq(0.001, 0.11, by = 0.02)) #seq(0.01,0.5, by=0.025)) #) #seq(0.01,0.5, by=0.02)) 
+    bestModelGLM <- train(train_set_All[, names(train_set_All) %in% c(x[findx], "Age")], Response, method = 'glmnet', trControl = objControl, tuneGrid = eGrid, metric="ROC", preProcess = c("scale", "center"))
+  plot(bestModelGLM)
+  print(bestModelGLM$results[bestModelGLM$results$alpha==bestModelGLM$bestTune$alpha & bestModelGLM$results$lambda==bestModelGLM$bestTune$lambda,])
+  
+  trGLMC <- confusionMatrix(bestModelGLM$pred$pred, bestModelGLM$pred$obs)
+  
+  impFeats <- varImp(bestModelGLM)
+  indxF <- impFeats[[1]]$Overall > 1.0
+  glmFnames <- rownames(impFeats[[1]])
+  bestglmFeats <- glmFnames[indxF]
+  require(ggplot2)
+  require(wesanderson)
+  require(ggpubr)
+
+  g3<- ggplot(varImp(bestModelGLM)) + theme_pubr(base_size = 16) + theme(text = element_text(size=12))
+ 
+  train_set$FIGO <- as.factor(train_set$FIGO)
+  train_set$Stage <- as.factor(train_set$Stage)
+  
+    ## one hot encode
+  dmy <- dummyVars(" ~ .", data = train_set[, names(train_set) %in% c(bestglmFeats,  "Histology", "FIGO", "Stage")])
+  onehotData <- data.frame(predict(dmy, newdata = train_set))
+ 
+  ## Recursive feature elimination RF 
+   rfCtrl <- trainControl(method = "cv", number = 5, classProbs=TRUE, savePredictions = "final", search="grid", summaryFunction=twoClassSummary, sampling = smotetest300)
+ 
+   rfeCtrl <- rfeControl(functions = caretFuncs, method = "repeatedcv", number = 5, repeats = 10, returnResamp = "final", verbose = TRUE)
+   
+   rfFit <- rfe(onehotData, train_set_All$Response, sizes = c(5, 10, 15, 20,25), rfeControl = rfeCtrl, method = "rf", metric = "Accuracy", trControl = rfCtrl, ntree = 2000, preProcess = c("scale", "center"), allowParallel = TRUE)
+   
+  save(rfFit, file = "rfModelTMB-Age.rda")
+  save(bestModelGLM, file = "glmnetTMB-Age.rda")
+ 
+   rocRFERFRad <- roc(rfFit$fit$pred$obs, rfFit$fit$pred$TMB.Hi, ci = TRUE, smooth = TRUE)
+  trC <- confusionMatrix(rfFit$fit$pred$pred, rfFit$fit$pred$obs)
+   print(rocRFERFRad)
+  tocsv <- data.frame(cbind(t(trC$overall), t(trC$byClass)))
+  write.csv(tocsv, file="trainingROCTMB-WResampling-RFERF-UpdatedSMOTE-Age.csv")
+  
+  impRFFeats <- varImp(rfFit$fit)
+  indxF <- impRFFeats[[1]]$Overall > 25
+  RFFnames <- rownames(impRFFeats[[1]])
+  bestRFFeats <- RFFnames[indxF]
+  snames <- bestRFFeats
+  
+  val_Response <- test_set_All$TMB > 15.5
+  val_Response <- replace(val_Response, val_Response==TRUE, "TMB.Hi")
+  val_Response <- replace(val_Response, val_Response==FALSE, "TMB.Low")
+  Response <- as.factor(val_Response)
+  test_set_All$Response <- Response
+  
+   ## one hot encode
+   test_set$FIGO <- as.factor(test_set$FIGO)
+   test_set$Stage <- as.factor(test_set$Stage)
+   dmy <- dummyVars(" ~ .", data = test_set[, names(test_set) %in% c(bestglmFeats,  "Histology", "FIGO", "Stage")])
+  onehotData <- data.frame(predict(dmy, newdata = test_set))
+  
+  
+  snames <- bestRFFeats[!bestRFFeats %in% c("Histology", "FIGO.1", "FIGO.2", "Stage.1", "Stage.2")] 
+  
+  allResponse <- feat.data$TMB > 15.5
+  allResponse <- replace(allResponse, allResponse==TRUE, "TMB.Hi")
+  allResponse <- replace(allResponse, allResponse==FALSE, "TMB.Low")
+  allResponse <- as.factor(allResponse)
+  
+  pVals = rep(0, length(snames))
+  for (i in 1 : length(snames)) {
+    
+    p <- wilcox.test(feat.data[,names(test_set_All) %in% snames[i]] ~ allResponse)
+    if(p$p.value > 0.05) {
+      
+      pVals[i] <- p$p.value
+    }
+    else{
+      pVals[i] <- p$p.value
+    }
+  }
+  
+  t <- feat.data%>%
+    group_by(Histology, allResponse) %>%
+    do(data.frame(nrow=nrow(.)))
+  
+  tidy(fisher.test(matrix(c(as.matrix.data.frame(t[1:9,3]), 0, as.matrix.data.frame(t[10:11,3])), 
+                          nrow=2, ncol=6, dimnames = list(c("Low", "High"), c("Endometroid", "Clear cell", "Carcinosarcoma", "Unclassified", "Serous", "Undifferentiated"))), alternative = "two.sided", hybrid=TRUE, workspace=2e+07))
+  
+  
+  snames <- c(snames, c("Histology"))
+  pVals <- c(pVals, 0.71)
+  padjVal <- p.adjust(pVals, method="holm")
+  indx <- padjVal < 0.05
+  print(padjVal[indx])
+  print(snames[indx])
+
+  plot(rfFit$fit)
+  plot(varImp(rfFit$fit))
+  g3<- ggplot(varImp(rfFit$fit)) + theme_pubr(base_size = 16) + theme(text = element_text(size=14))
+  ggsave("FigureRFERFFeatureImportance-WResampling-TMB-Age.tiff", g3, dpi=300)
+  ggsave("FigureRFERFFeatureImportance-WResampling-TMB-Age.pdf", g3, dpi=300)
+  
+  
+   ## check validation results
+  RFVal <- predict(object = rfFit$fit, onehotData)
+  vC<- confusionMatrix(RFVal, test_set_All$Response)
+  tocsv <- data.frame(cbind(t(vC$overall), t(vC$byClass)))
+  write.csv(tocsv, file="valROCTMB-WResamplingRFERF-UpdatedSMOTE-Age.csv")
+  
+  resprob = predict(rfFit$fit, onehotData, type="prob")
+  rocRFValRad <- roc(test_set_All$Response, resprob[,2], ci = TRUE, smooth = TRUE)
+  print(rocRFValRad)
+  roc.test(rocRFERFRad, rocRFValRad)
+ 
+  require(epiR)
+  require(rms)
+  epi.tests(trC$table)
+  epi.tests(vC$table)
+
+  legend_title = "Response"
+
+  feat.data$diff.MeanGabor6 = -feat.data$diff.MeanGabor6
+  feat.data$diff.MeanGabor4 = -feat.data$diff.MeanGabor4
+  feat.data$diff.MeanGabor8 = -feat.data$diff.MeanGabor8
+  g2 <- ggplot(data=feat.data, aes(x=factor(Response), y=diff.MeanGabor6, fill=Response)) + geom_boxplot(width=0.25) +  geom_jitter(width=0.05, height=0.01) + theme_pubr(base_size=24) + scale_fill_manual(legend_title, labels = c("High TMB", "Low TMB"), values = wes_palette("FantasticFox")) + theme(axis.text.x = element_blank(), axis.text.y=element_text(size=20), axis.title.x = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_text(size=20), legend.text = element_text(size=20)) + theme(legend.background = element_rect(fill="white", size=0.5, linetype="solid", color="black")) 
+  
+  g3 <- ggplot(data=feat.data, aes(x=factor(Response), y=diff.MeanGabor4, fill=Response)) + geom_boxplot(width=0.25) +  geom_jitter(width=0.05, height=0.01) + theme_pubr(base_size=24) + scale_fill_manual(legend_title, labels = c("High TMB", "Low TMB"), values = wes_palette("FantasticFox")) + theme(axis.text.x = element_blank(), axis.text.y=element_text(size=20), axis.title.x = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_text(size=20), legend.text = element_text(size=20)) + theme(legend.background = element_rect(fill="white", size=0.5, linetype="solid", color="black"))
+  
+  g4 <- ggplot(data=feat.data, aes(x=factor(Response), y=diff.MeanGabor8, fill=Response)) + geom_boxplot(width=0.25) +  geom_jitter(width=0.05, height=0.01) + theme_pubr(base_size=24) + scale_fill_manual(legend_title, labels = c("High TMB", "Low TMB"), values = wes_palette("FantasticFox")) + theme(axis.text.x = element_blank(), axis.text.y=element_text(size=20), axis.title.x = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_text(size=20), legend.text = element_text(size=20)) + theme(legend.background = element_rect(fill="white", size=0.5, linetype="solid", color="black")) 
+  #+ annotate("text", x = 1.0, y = 0.7, label = "P = 0.031", size = 12)
+  
+  require(ggpubr)
+  g5 <- ggarrange(g3, g2, g4, ncol=3, nrow=1, common.legend = TRUE, legend="top")
+  
+  ggsave("TexturesVsTMB.tiff", g5, dpi=300)
+  ggsave("TexturesVsTMB.pdf", g2, dpi=300)
+  
+  rC <- data.frame(c(rocRFERFRad$sensitivities, rocRFValRad$sensitivities), c(1.0-rocRFERFRad$specificities, 1.0-rocRFValRad$specificities), c(rep("Cross validation", length(rocRFERFRad$sensitivities)), rep("True validation", length(rocRFValRad$sensitivities))))
+  colnames(rC) <- c("Sensitivity", "Specificity", "Test")
+  
+    g1 <- ggplot(rC, aes(Specificity, Sensitivity, color=Test, linetype = Test)) + geom_path(size=1.5) + scale_linetype_manual(values = c("solid", "solid")) + scale_color_manual(values = wes_palette("Darjeeling")) + theme_pubr(base_size=24) + xlab("1-Specificity") + ylab("Sensitivity\n") + theme(plot.title = element_text(hjust = 0.0), axis.text=element_text(size=18), axis.title = element_text(size=18),  axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) + labs(title = "TMB-High, TMB-Low") + theme(axis.text=element_text(size=24, face="bold"), legend.text=element_text(size=24), legend.spacing.y = unit(5, "char"), legend.title = element_blank(), legend.position = c(0.75, 0.35)) + guides(linetype = guide_legend(nrow = 2, keywidth = 1, keyheight = 2)) + theme(legend.background = element_rect(fill="white", size=0.25, linetype = "solid", color="black"))
+    
+    TMBROC <- g1
+    
+     MMRDPOLE <- ggplot(rC, aes(Specificity, Sensitivity, color=Test, linetype = Test)) + geom_path(size=1.5) + scale_linetype_manual(values = c("solid", "solid")) + scale_color_manual(values = wes_palette("Darjeeling")) + theme_pubr(base_size=24) + xlab("1-Specificity") + ylab("Sensitivity\n") + theme(plot.title = element_text(hjust = 0.0), axis.text=element_text(size=18), axis.title = element_text(size=24),  axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +  theme(axis.text=element_text(size=24, face="bold"), legend.text=element_text(size=24), legend.spacing.y = unit(5, "char"), legend.title = element_blank(), legend.position = "top") + guides(linetype = guide_legend(nrow = 1, keywidth = 1, keyheight = 2)) + theme(legend.background = element_rect(fill="white", size=0.25, linetype = "solid", color="black"))
+  
+  ggsave("ROCCurvesTMBEC-Age.png", g1, dpi=600)
+  ggsave("ROCCurvesTMBEC-Age.pdf", g1, dpi=600)
+
+```
+
+
+** MMRD vs CN-Low and CN-High**
+
+```{r, echo=F, warning=F}
+  require(mRMRe)
+  require(caret)
+
+  print(sum(as.numeric(feat.data$MolecularSubtype ==2), na.rm=T)) ## (MSI hypermutated tumors)
+  print(sum(as.numeric(feat.data$MolecularSubtype >2), na.rm=T)) ##(non-hypermutated tumors)
+
+  x <- fnames[!(fnames%in% clin.names)]
+  
+  indx <- feat.data$MolecularSubtype > 1
+  feat.data.MSK <- feat.data[indx,]
+  feat.data.MSK <- droplevels(feat.data.MSK)
+  
+  indx <- train_set_All$MolecularSubtype > 1
+  train_set_All <- train_set_All[indx,]
+  train_set_All <- droplevels(train_set_All)
+  
+  indx <- test_set_All$MolecularSubtype > 1
+  test_set_All <- test_set_All[indx,]
+  test_set_All <- droplevels(test_set_All)
+  
+  
+  Response <- train_set_All$MolecularSubtype==2
+  Response <- replace(Response, Response==TRUE, "MSIHi")
+  Response <- replace(Response, Response==FALSE, "MSILow")
+  train_set_All$Response <- as.factor(Response)
+  
+  featuredata <- train_set_All[, c("Response", x)]
+  fclass <- sapply(featuredata, class)
+  nonNum <- fclass != "numeric"
+  featuredata[,nonNum] <- as.numeric(featuredata[,nonNum])
+  
+  #featuredata$Response <- as.ordered(as.factor(Response))
+  
+  nfeats <- ncol(featuredata)
+  fdata <- mRMR.data(data = data.frame(featuredata))
+  filter <- mRMR.classic("mRMRe.Filter", data = fdata, target_indices = 1, feature_count = round((length(featuredata)-1)*0.8))
+  
+  
+  
+  findx <- unlist(solutions(filter), use.names=FALSE)
+  findx <- findx-1
+  
+  train_set <- train_set_All[, names(train_set_All) %in% c(x[findx], "Histology", "FIGO", "Stage", "Age")]
+  test_set <- test_set_All[, names(test_set_All) %in% c(x[findx], "Histology", "FIGO", "Stage", "Age")]
+
+  train_set$FIGO <- as.factor(train_set$FIGO)
+  train_set$Stage <- as.factor(train_set$Stage)
+  
+  test_set$FIGO <- as.factor(test_set$FIGO)
+  test_set$Stage <- as.factor(test_set$Stage)
+  
+  
+  
+  objControl <- trainControl(method="repeatedcv", number = 5, repeats = 10, search = "grid", classProb = TRUE, savePredictions = "final", summaryFunction = twoClassSummary, sampling = "up", verbose = TRUE)
+    eGrid <- expand.grid(.alpha = seq(0.1,1.0,by=0.1), .lambda = seq(0.001, 0.11, by = 0.02)) #seq(0.01,0.5, by=0.025)) #) #seq(0.01,0.5, by=0.02)) 
+    bestModelGLM <- train(train_set_All[, names(train_set_All) %in% c("Age", x[findx])], Response, method = 'glmnet', trControl = objControl, tuneGrid = eGrid, metric="ROC", preProcess = c("scale", "center"))
+  plot(bestModelGLM)
+  print(bestModelGLM$results[bestModelGLM$results$alpha==bestModelGLM$bestTune$alpha & bestModelGLM$results$lambda==bestModelGLM$bestTune$lambda,])
+  
+  trGLMC <- confusionMatrix(bestModelGLM$pred$pred, bestModelGLM$pred$obs)
+  
+    
+  save(bestModelGLM, file = "glmnetMMRD-Age.rda")
+  
+  impFeats <- varImp(bestModelGLM)
+  indxF <- impFeats[[1]]$Overall > 1.0
+  glmFnames <- rownames(impFeats[[1]])
+  bestglmFeats <- glmFnames[indxF]
+  require(ggplot2)
+  require(wesanderson)
+  require(ggpubr)
+
+  g3<- ggplot(varImp(bestModelGLM)) + theme_pubr(base_size = 16) + theme(text = element_text(size=12))
+ 
+  
+  ## Recursive feature elimination RF 
+   rfCtrl <- trainControl(method = "cv", number = 5, classProbs=TRUE, savePredictions = "final", search="grid", summaryFunction=twoClassSummary, sampling = smotetest300)
+ 
+   rfeCtrl <- rfeControl(functions = caretFuncs, method = "repeatedcv", number = 5, repeats = 10, returnResamp = "final", verbose = TRUE)
+   
+   
+    ## one hot encode
+  dmy <- dummyVars(" ~ .", data = train_set[, names(train_set) %in% c(bestglmFeats,  "Histology", "FIGO", "Stage")])
+  onehotData <- data.frame(predict(dmy, newdata = train_set))
+   
+   rfFit <- rfe(onehotData, train_set_All$Response, sizes = c(5, 10, 15, 20,25), rfeControl = rfeCtrl, method = "rf", metric = "Accuracy", trControl = rfCtrl, ntree = 2000, preProcess = c("scale", "center"))
+
+  save(rfFit, file = "rfModelMMRD-Age.rda")
+  impRFFeats <- varImp(rfFit$fit)
+  indxF <- impRFFeats[[1]]$Overall > 25
+  RFFnames <- rownames(impRFFeats[[1]])
+  bestRFFeats <- RFFnames[indxF]
+  
+  snames <- bestRFFeats[!bestRFFeats %in% c("Histology", "FIGO.1", "FIGO.2", "Stage.1", "Stage.2")] 
+  
+  Response <- feat.data$MolecularSubtype ==2
+  Response <- replace(Response, Response==TRUE, "MSIHi")
+  Response <- replace(Response, Response==FALSE, "MSILow")
+  Response <- as.factor(Response)
+  feat.data$MSI <- Response
+  
+  #snames <- c(snames, "Age")
+  relIndx = rep(TRUE, length(snames))
+  pVals = rep(0, length(snames))
+  for (i in 1 : length(snames)) {
+      p <- wilcox.test(feat.data[,names(train_set_All)%in% snames[i]] ~ Response, data=feat.data)
+      if(p$p.value > 0.05) {
+        relIndx[i] <- FALSE
+        pVals[i] <- p$p.value
+      }
+      else{
+        pVals[i] <- p$p.value
+      }
+    
+  }
+  
+   t <- feat.data%>%
+    group_by(Histology, Response) %>%
+    do(data.frame(nrow=nrow(.)))
+  
+  tidy(fisher.test(matrix(c(as.matrix.data.frame(t[1:9,3]), 0, as.matrix.data.frame(t[10:11,3])), 
+                          nrow=2, ncol=6, dimnames = list(c("Low", "High"), c("Endometroid", "Clear cell", "Carcinosarcoma", "Unclassified", "Serous", "Undifferentiated"))), alternative = "two.sided", hybrid=TRUE, workspace=2e+07))
+  
+  
+
+  padjVal <- p.adjust(pVals, method="BH")
+  indx <- padjVal < 0.05
+  print(padjVal[indx])
+  print(snames[indx])
+  
+  
+  
+  require(ggplot2)
+  require(wesanderson)
+  require(ggpubr)
+
+  plot(rfFit$fit)
+  plot(varImp(rfFit$fit))
+  g3<- ggplot(varImp(rfFit$fit)) + theme_pubr(base_size = 12) + theme(text = element_text(size=12))
+  ggsave("FigureRFERFFeatureImportanceMSI-WResampling-Age.tiff", g3, dpi=600)
+  ggsave("FigureRFERFFeatureImportanceMSI-WResampling-Age.pdf", g3, dpi=600)
+  
+  rocRFERFRad <- roc(rfFit$fit$pred$obs, rfFit$fit$pred$MSIHi, ci = TRUE, smooth = TRUE)
+  trC <- confusionMatrix(rfFit$fit$pred$pred, rfFit$fit$pred$obs)
+  
+  tocsv <- data.frame(cbind(t(trC$overall), t(trC$byClass)))
+  write.csv(tocsv, file="trainingROCMSI-WResampling-Age.csv")
+  
+  print(rocRFERFRad)
+  epi.tests(trC$table)
+  
+  legend_title = "Response"
+
+  g2 <- ggplot(data=train_set_All, aes(x=factor(Response), y=Homogeneity, fill=Response)) + geom_boxplot() +  geom_jitter(width=0.1, height=0.01) + theme_pubr(base_size=24) + scale_fill_manual(legend_title, labels = c("MSI High", "MSI Low"), values = wes_palette(2)) + theme(axis.text=element_text(size=20), axis.title.x = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_text(size=24), legend.text = element_text(size=20)) + theme(legend.background = element_rect(fill="white", size=0.5, linetype="solid", color="black")) + annotate("text", x = 1.0, y = 0.45, label = "P = 0.035", size = 12) + ylab("Homogeneity")
+  ggsave("Homogeneity-MSI-Train-WResampling.tif", g2, dpi=300)
+  ggsave("Homogeneity-MSI-Train-WResampling.pdf", g2, dpi=300)
+  
+  g2 <- ggplot(data=train_set_All, aes(x=factor(Response), y=StDev, fill=Response)) + geom_boxplot() +  geom_jitter(width=0.1, height=0.01) + theme_pubr(base_size=24) + scale_fill_manual(legend_title, labels = c("MSI High", "MSI Low"), values = wes_palette(2)) + theme(axis.text=element_text(size=20), axis.title.x = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_text(size=24), legend.text = element_text(size=20)) + theme(legend.background = element_rect(fill="white", size=0.5, linetype="solid", color="black")) + annotate("text", x = 1.0, y = 0.45, label = "P = 0.035", size = 12) + ylab("SD")
+  ggsave("SD-MSI-Train-WResampling.tif", g2, dpi=300)
+  ggsave("SD-MSI-Train-WResampling.pdf", g2, dpi=300)
+  
+  
+   ## check validation results
+  
+  val_Response <- test_set_All$MolecularSubtype ==2
+  val_Response <- replace(val_Response, val_Response==TRUE, "MSIHi")
+  val_Response <- replace(val_Response, val_Response==FALSE, "MSILow")
+  Response <- as.factor(val_Response)
+  
+  ## one hot encode
+  test_set_All$FIGO <- as.factor(test_set_All$FIGO)
+  test_set_All$Stage <- as.factor(test_set_All$Stage)
+  test_set <- test_set_All
+  
+  dmy <- dummyVars(" ~ .", data = test_set[, names(test_set) %in% c(bestglmFeats,  "Histology", "FIGO", "Stage")])
+  onehotData <- data.frame(predict(dmy, newdata = test_set))
+ 
+  
+  RFVal <- predict(object = rfFit$fit, onehotData)
+  vC<- confusionMatrix(RFVal, val_Response)
+  tocsv <- data.frame(cbind(t(vC$overall), t(vC$byClass)))
+  write.csv(tocsv, file="valROCMSI-WResampling-Age.csv")
+  
+  
+  
+  resprob = predict(rfFit$fit, onehotData, type="prob")
+  rocRFValRad <- roc(val_Response, resprob[,2], ci = TRUE, smooth = TRUE)
+  print(rocRFValRad)
+  roc.test(rocRFERFRad, rocRFValRad)
+  epi.tests(vC$table)
+ 
+  rC <- data.frame(c(rocRFERFRad$sensitivities, rocRFValRad$sensitivities), c(1.0-rocRFERFRad$specificities, 1.0-rocRFValRad$specificities), c(rep("Cross validation", length(rocRFERFRad$sensitivities)), rep("True validation", length(rocRFValRad$sensitivities))))
+  colnames(rC) <- c("Sensitivity", "Specificity", "Test")
+  
+   
+    g1 <- ggplot(rC, aes(Specificity, Sensitivity, color=Test, linetype = Test)) + geom_path(size=1.5) + scale_linetype_manual(values = c("solid", "solid")) + scale_color_manual(values = wes_palette("Darjeeling")) + theme_pubr(base_size=24) + xlab("1-Specificity") + ylab("Sensitivity\n") + theme(plot.title = element_text(hjust = 0.0), axis.text=element_text(size=18), axis.title = element_text(size=24),  axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) + labs(title = "MMR-D vs. CN high and low") + theme(axis.text=element_text(size=24, face="bold"), legend.text=element_text(size=24), legend.spacing.y = unit(5, "char"), legend.title = element_blank(), legend.position = c(0.75, 0.35)) + guides(linetype = guide_legend(nrow = 2, keywidth = 1, keyheight = 2)) + theme(legend.background = element_rect(fill="white", size=0.25, linetype = "solid", color="black"))
+      
+  ggsave("ROCCurvesMMRD-WResampling-Age.png", g1, dpi=300)
+  ggsave("ROCCurvesMMRD-WResampling-Age.pdf", g1, dpi=300)
+  save(rfFit, file = "rfModelMSI-WResampling-Age.rda")
+  
+  rocs <- ggarrange(g1, TMBROC, common.legend = TRUE)
+  ggsave("CombinedROC.pdf", rocs, dpi=600)
+  ggsave("CombinedROC.tiff", rocs, dpi=600)
+
+
+```
+
+
