@@ -2,7 +2,7 @@ import itertools
 from joblib import parallel_backend, Parallel, delayed, load, dump
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
-
+import math
 import os
 import pandas as pd
 from scipy.stats import ttest_rel
@@ -11,6 +11,8 @@ import time
 from pprint import pprint
 
 from scipy.stats import pearsonr, friedmanchisquare
+from sklearn.metrics import roc_curve, auc, roc_auc_score, precision_recall_curve
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, classification_report
 from scikit_posthocs import posthoc_nemenyi_friedman
 from joblib import parallel_backend, Parallel, delayed, load, dump
 
@@ -35,6 +37,60 @@ def crosscorrelation (fcor, fu, fv):
     return CS
 
 
+
+def zucknick (fcor, fu, fv):
+    outputs = np.asarray(fu).astype(bool)
+    labels = np.asarray(fv).astype(bool)
+
+    intersection = (outputs & labels).sum((0))
+    union = (outputs | labels).sum((0))
+
+    idxU = np.where(fu == 1.0)[0]
+    idxV = np.where(fv == 1.0)[0]
+
+    # median
+    M = []
+    for u in idxU:
+        for v in idxV:
+            if u != v:
+                M.append(fcor[u,v])
+    # if can happen that the feature sets has size 1 and coincide perfectly.
+    # then this is schrott. this is special case, but happens, if we want
+    # the real best feature. in this case, however, vi and vj will be 1,
+    # and vji and vji be empy, so this is jaccard
+    if len(M) == 0:
+        zucknick = (intersection) / (union)
+        return zucknick
+
+    m = np.median(M)
+
+    # c, d
+    vi = np.sum(fu)
+    vj = np.sum(fv)
+    vij = np.where((fu == 1.0) & (fv == 0.0))[0]
+    vji = np.where((fu == 0.0) & (fv == 1.0))[0]
+
+    c = 0
+    for u in idxU:
+        tmp = 0
+        for v in vji:
+            if fcor[u,v] > m:
+                tmp += fcor[u,v]
+        c += tmp/vi
+
+    d = 0
+    for v in idxV:
+        tmp = 0
+        for u in vij:
+            if fcor[u,v] > m:
+                tmp += fcor[u,v]
+        d += tmp/vj
+
+    zucknick = (intersection + c + d) / (union)
+    return zucknick
+
+
+
 # cross similairty of a pattern
 def ccor (fcor, fu, fv):
     return 0.5*(crosscorrelation (fcor, fu, fv) + crosscorrelation (fcor, fv, fu))
@@ -49,6 +105,18 @@ def iou(outputs: np.array, labels: np.array):
 
     iou = (intersection) / (union)
     return iou
+
+
+
+def ochiai(outputs: np.array, labels: np.array):
+    outputs = np.asarray(outputs).astype(bool)
+    labels = np.asarray(labels).astype(bool)
+
+    intersection = (outputs & labels).sum((0))
+    union = (outputs | labels).sum((0))
+
+    ochiai = (intersection) / np.sqrt( (labels.sum((0))*outputs.sum((0))) )
+    return ochiai
 
 
 
@@ -136,6 +204,10 @@ def featureAgreement (dfA, d, data, amethod = "ccor"):
                         agreement.extend( [ccor(fcor, vi, vj)] )
                     if amethod == "iou":
                         agreement.extend( [iou(vi, vj)] )
+                    if amethod == "ochiai":
+                        agreement.extend( [ochiai(vi, vj)] )
+                    if amethod == "zucknick":
+                        agreement.extend( [zucknick(fcor, vi, vj)] )
             fMat[i,j] = np.mean(agreement)
 
     fMat = (fMat*100).round(0).astype(int)
@@ -303,21 +375,16 @@ def drawArray (table3, cmap = None, clipRound = True, fsize = (9,7), aspect = No
 
 
 
-def createFeatureFigures (table2, table3):
+def createFeatureFigures (table2, mname, fnumber):
     tableFeatsOIU = pd.concat(table2).groupby(level=0).mean()
     tableFeatsOIU = tableFeatsOIU.loc[tR.index]
-    print ("TableFeats IOU mean", tableFeatsOIU.mean().mean())
-    drawArray(tableFeatsOIU.round(0), cmap = [("o", 0, 50, 100)], fsize = (10,7), fName = "Figure5", paper = True)
-
-    tableFeatsCCor = pd.concat(table3).groupby(level=0).mean()
-    tableFeatsCCor = tableFeatsCCor.loc[tR.index]
-    print ("TableFeats CCor mean", tableFeatsCCor.mean().mean())
-    drawArray(tableFeatsCCor.round(0), cmap = [("o", 0, 66, 100)], fsize = (10,7), fName = "Figure6", paper = True)
+    print (f"TableFeats {mname} mean", tableFeatsOIU.mean().mean())
+    drawArray(tableFeatsOIU.round(0), cmap = [("o", 0, 50, 100)], fsize = (10,7), fName = f"Figure{fnumber}", paper = True)
     return None
 
 
 
-def createRankingTable (table1):
+def createRankingTable (table1, tableSens, tableSpec):
     tableAUC = pd.concat(table1, axis = 1)
     tR = tableAUC.rank(axis = 0, ascending = False).mean(axis = 1)
     tR = pd.DataFrame(tR).round(1)
@@ -332,12 +399,44 @@ def createRankingTable (table1):
     tM = tM - tM["None"]
     tM = tM.round(3)
     rTable["Mean gain in AUC"] = tM
+
     tX = tableAUC - tableAUC.loc["None"]
     tX = tX.max(axis = 1)
     tX = tX.round(3)
     rTable["Maximum gain in AUC"] = tX
 
-    drawArray(rTable, aspect = 0.6, fsize = (10,7), cmap = [("-", 3.5, (3.5+6.5)/2, 6.5), ("+", -0.015, 0.0, 0.015), ("+", -0.06, 0.0, 0.06)], fName = "Figure2", paper = True)
+
+    # stupid, there is one level of lists too much
+    tableSe = pd.concat([t[0] for t in tableSens], axis = 1)
+    tM = tableSe.mean(axis= 1)
+    tM = tM - tM["None"]
+    tM = tM.round(3)
+    tM = tM.loc[tR.index]
+    rTable["Mean gain in Sensitivity"] = tM
+    tX = tableSe - tableSe.loc["None"]
+    tX = tX.max(axis = 1)
+    tX = tX.round(3)
+    tX = tX.loc[tR.index]
+    rTable["Maximum gain in Sensitivity"] = tX
+
+
+    tableSp = pd.concat([t[0] for t in tableSpec], axis = 1)
+    tM = tableSp.mean(axis= 1)
+    tM = tM - tM["None"]
+    tM = tM.round(3)
+    tM = tM.loc[tR.index]
+    rTable["Mean gain in Specificity"] = tM
+    tX = tableSp - tableSp.loc["None"]
+    tX = tX.max(axis = 1)
+    tX = tX.round(3)
+    tX = tX.loc[tR.index]
+    rTable["Maximum gain in Specificity"] = tX
+
+    drawArray(rTable, aspect = 0.6, fsize = (10,7), \
+        cmap = [("-", 3.5, (3.5+6.5)/2, 6.5), \
+                ("+", -0.015, 0.0, 0.015), ("+", -0.06, 0.0, 0.06), \
+                ("+", -0.015, 0.0, 0.015), ("+", -0.06, 0.0, 0.06), \
+                ("+", -0.015, 0.0, 0.015), ("+", -0.06, 0.0, 0.06)], fName = "Figure2", paper = True)
     rTable.to_csv("./results/ranking.csv")
 
     methods = tA.index
@@ -420,6 +519,45 @@ def getFSelWinnerTable (dfA):
 
 
 
+
+def getAUCs (preds, gts):
+    fpr, tpr, thresholds = roc_curve (gts, preds)
+    area_under_curve = auc (fpr, tpr)
+
+    if (math.isnan(area_under_curve) == True):
+        print ("ERROR: Unable to compute AUC of ROC curve. NaN detected!")
+        raise Exception ("Unable to compute AUC")
+
+    sens, spec = findOptimalCutoff (fpr, tpr, thresholds) # need this?
+    return area_under_curve, sens, spec
+
+
+
+
+def getSensSpecTable (dfA, d, metric):
+    dfA = dfA.copy()
+    for k in dfA.index:
+        row = dfA.loc[k]
+        all_gt = np.concatenate([row[f"Fold_{j}_GT"] for j in range(5)])
+        all_preds = np.concatenate([row[f"Fold_{j}_Preds"] for j in range(5)])
+        all_preds[all_preds != all_preds] = 0.5
+        area_under_curve, sens, spec = getAUCs (all_preds, all_gt) # need for sens spec?
+        dfA.at[k, "Sens"] = sens
+        dfA.at[k, "Spec"] = spec
+
+    # can be sens or spec
+    Bmean = pd.DataFrame(dfA).groupby(["Resampling"])[metric].mean().round(3)
+    Bmean = Bmean.rename({s:getName(s) for s in Bmean.keys()})
+
+    tableB = []
+    ctable = pd.DataFrame(Bmean)
+    ctable[d] = [s[0] for s in list(zip(*[Bmean.values]))]
+    ctable = ctable.drop([metric], axis = 1)
+    tableB.append (ctable)
+    return tableB
+
+
+
 def computeTable (d):
     from loadData import Arita2018, Carvalho2018, Hosny2018A, Hosny2018B, Hosny2018C
     from loadData import Ramella2018, Saha2018, Lu2019, Sasaki2019, Toivonen2019, Keek2020
@@ -435,16 +573,20 @@ def computeTable (d):
 
     # extract infos
     dfA = extractDF (resultsA)
+
     checkSplits(dfA)
 
     tableA = getAUCTable(dfA, d)
+    tableSens = getSensSpecTable(dfA, d, "Sens")
+    tableSpec = getSensSpecTable(dfA, d, "Spec")
     table1 = pd.DataFrame(tableA[0])
     table2 = featureAgreement (dfA, d, data, amethod = "iou")
     table3 = featureAgreement (dfA, d, data, amethod = "ccor")
+    table4 = featureAgreement (dfA, d, data, amethod = "ochiai")
+    table5 = featureAgreement (dfA, d, data, amethod = "zucknick")
 
     extractFeaturesForR (dfA, d, data)
-    return tableA, table1, table2, table3
-
+    return tableA, table1, table2, table3, table4, table5, tableSens, tableSpec
 
 
 
@@ -454,19 +596,29 @@ if __name__ == '__main__':
         cres = Parallel (n_jobs = ncpus)(delayed(computeTable)(d) for d in dList)
     print ("DONE")
 
-    table1 = []; table2 = []; table3 = []
+    table1 = []; table2 = []; table3 = []; table4 = []; table5 = []; tableSens = []; tableSpec = []
     for j, _ in enumerate(dList):
-        tA, t1, t2, t3 = cres[j]
+        tA, t1, t2, t3, t4, t5, tSe, tSp = cres[j]
         table1.append(t1)
         table2.append(t2)
         table3.append(t3)
+        table4.append(t4)
+        table5.append(t5)
+        tableSens.append(tSe)
+        tableSpec.append(tSp)
 
     # ranking table
-    tR, tableA = createRankingTable (table1)
+    tR, tableA = createRankingTable (table1, tableSens, tableSpec)
 
     # features
     table2 = [k.loc[tR.index][tR.index] for k in table2]
+    createFeatureFigures (table2, "iou", 5)
     table3 = [k.loc[tR.index][tR.index] for k in table3]
-    createFeatureFigures (table2, table3)
+    createFeatureFigures (table3, "ccor", 6)
+    table4 = [k.loc[tR.index][tR.index] for k in table4]
+    createFeatureFigures (table4, "ochiai", 7)
+    table5 = [k.loc[tR.index][tR.index] for k in table5]
+    createFeatureFigures (table5, "zucknick", 8)
+
 
 #
